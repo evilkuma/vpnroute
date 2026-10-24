@@ -15,6 +15,7 @@
 - Устройства «весь трафик через VPN» с переключением кнопкой на странице «Состояние» или командой `vpnroute device <имя> toggle`.
 - Защита от обхода: перехват DNS, блокировка DoT и известных DoH-серверов, блокировка IPv6.
 - Проверка «куда пойдёт этот домен» из панели и командной строки.
+- **Диагностика трафика устройства**: запись всех соединений и DNS-запросов одного устройства, статусы вроде «нет ответа» или «сброс», фильтры и добавление найденного в список VPN одной кнопкой ([docs/trace.md](docs/trace.md)).
 
 ## Документация
 
@@ -22,6 +23,7 @@
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Как устроено внутри: FakeDNS, TPROXY, nftables, dnsmasq |
 | [docs/lists.md](docs/lists.md) | Как заполнять списки, пример для YouTube |
+| [docs/trace.md](docs/trace.md) | Диагностика трафика устройства: поиск того, что блокирует провайдер |
 | [docs/plan.md](docs/plan.md) | Состояние работ, решения, результаты проверок, как проверять трафик |
 | [docs/firmware-upgrade.md](docs/firmware-upgrade.md) | Прошивка AX3000T на OpenWrt 25.12 |
 
@@ -78,6 +80,8 @@ vpnroute device TV toggle        переключить «весь трафик 
 vpnroute check youtube.com       куда пойдёт трафик
 vpnroute logs 100                журнал
 vpnroute gen                     сгенерированная конфигурация Xray
+vpnroute trace start <IP> [мин]  диагностика трафика устройства (см. docs/trace.md)
+vpnroute list-add <список> <домен|IP>   добавить запись в список
 ```
 
 ## Структура репозитория
@@ -86,13 +90,15 @@ vpnroute gen                     сгенерированная конфигур
 files/                          файлы, которые копируются в корень роутера
   etc/config/vpnroute           настройки по умолчанию (UCI)
   etc/init.d/vpnroute           служба: генерация, правила, запуск Xray
+  etc/init.d/vpnroute-trace     служба сеанса диагностики (только по запросу)
   etc/hotplug.d/iface/          восстановление маршрута после перезапуска сети
   usr/bin/vpnroute              командная утилита
   usr/share/vpnroute/gen.uc     генератор конфигураций Xray, nftables, dnsmasq
   usr/share/vpnroute/status.uc  состояние в JSON для LuCI
+  usr/share/vpnroute/trace.uc   сбор данных для диагностики трафика
   usr/share/luci/menu.d/        пункт меню LuCI
   usr/share/rpcd/acl.d/         права доступа LuCI
-  www/luci-static/.../vpnroute/ страницы «Состояние» и «Настройки»
+  www/luci-static/.../vpnroute/ страницы «Состояние», «Настройки», «Диагностика»
 scripts/                        установка, удаление, отправка с ПК, отключение IPv6
 docs/                           документация
 ```

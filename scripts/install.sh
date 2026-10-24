@@ -72,7 +72,10 @@ log "копирую файлы"
 	tr -d '\r' < "$FILES/$f" > "/$f"
 done
 
-chmod 755 /etc/init.d/vpnroute /usr/bin/vpnroute /usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc
+chmod 755 /etc/init.d/vpnroute /etc/init.d/vpnroute-trace /usr/bin/vpnroute \
+	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc
+# служба диагностики запускается только по запросу, не при загрузке
+/etc/init.d/vpnroute-trace disable 2>/dev/null || true
 
 # ---------- dnsmasq ----------
 mkdir -p /etc/vpnroute

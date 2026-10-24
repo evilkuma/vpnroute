@@ -25,5 +25,13 @@
 			"type": "view",
 			"path": "vpnroute/settings"
 		}
+	},
+	"admin/services/vpnroute/trace": {
+		"title": "Диагностика",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "vpnroute/trace"
+		}
 	}
 }

@@ -11,14 +11,20 @@
 				"/usr/bin/vpnroute": [ "exec" ],
 				"/usr/bin/vpnroute status-json": [ "exec" ],
 				"/usr/bin/vpnroute check *": [ "exec" ],
-				"/usr/bin/vpnroute logs *": [ "exec" ]
+				"/usr/bin/vpnroute logs *": [ "exec" ],
+				"/usr/bin/vpnroute trace devices": [ "exec" ],
+				"/usr/bin/vpnroute trace dump": [ "exec" ],
+				"/usr/bin/vpnroute trace status": [ "exec" ]
 			}
 		},
 		"write": {
 			"uci": [ "vpnroute" ],
 			"file": {
 				"/usr/bin/vpnroute device *": [ "exec" ],
-				"/usr/bin/vpnroute apply": [ "exec" ]
+				"/usr/bin/vpnroute apply": [ "exec" ],
+				"/usr/bin/vpnroute trace start *": [ "exec" ],
+				"/usr/bin/vpnroute trace stop": [ "exec" ],
+				"/usr/bin/vpnroute list-add *": [ "exec" ]
 			}
 		}
 	}

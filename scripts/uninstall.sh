@@ -9,6 +9,10 @@ PURGE=0
 
 log() { echo "[vpnroute] $*"; }
 
+[ -x /usr/bin/vpnroute ] && /usr/bin/vpnroute trace stop >/dev/null 2>&1
+rm -f /etc/init.d/vpnroute-trace
+rm -rf /tmp/vpnroute-trace
+
 if [ -x /etc/init.d/vpnroute ]; then
 	/etc/init.d/vpnroute stop
 	/etc/init.d/vpnroute disable
