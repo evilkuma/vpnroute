@@ -1,0 +1,167 @@
+#!/bin/sh
+# vpnroute: управление точечной маршрутизацией через Xray
+
+INIT=/etc/init.d/vpnroute
+GEN=/usr/share/vpnroute/gen.uc
+STATUS=/usr/share/vpnroute/status.uc
+DNSMASQ_FILE=/etc/vpnroute/dnsmasq.servers
+FAKE_RE='^198\.1[89]\.'
+
+usage() {
+	cat <<'EOF'
+Использование: vpnroute <команда> [аргументы]
+
+  status                    краткое состояние
+  enable | disable          включить или выключить маршрутизацию
+  apply                     применить настройки (то же, что «Сохранить и применить» в LuCI)
+  restart                   полный перезапуск
+  device list               список устройств
+  device <имя|MAC> on|off|toggle
+                            весь трафик устройства через VPN: вкл/выкл/переключить
+  check <домен|IP>          куда пойдёт трафик: через туннель или напрямую
+  logs [N]                  последние N строк журнала (по умолчанию 50)
+  gen                       показать сгенерированную конфигурацию Xray
+EOF
+}
+
+uci_sections() {
+	uci -q show vpnroute | sed -n "s/^vpnroute\.\([^.=]*\)=$1\$/\1/p"
+}
+
+find_device() {
+	local key s mac
+	key="$(echo "$1" | tr 'A-Z' 'a-z')"
+	for s in $(uci_sections device); do
+		mac="$(uci -q get vpnroute."$s".mac | tr 'A-Z' 'a-z')"
+		if [ "$s" = "$1" ] || [ "$mac" = "$key" ] || [ "$(uci -q get vpnroute."$s".name)" = "$1" ]; then
+			echo "$s"
+			return 0
+		fi
+	done
+	return 1
+}
+
+cmd_status() {
+	local enabled running rules
+	enabled="$(uci -q get vpnroute.main.enabled)"
+	pidof xray >/dev/null && running="работает" || running="остановлен"
+	nft list table inet vpnroute >/dev/null 2>&1 && rules="применены" || rules="не применены"
+	echo "Маршрутизация: $([ "$enabled" = 1 ] && echo включена || echo выключена)"
+	echo "Xray:          $running"
+	echo "Правила:       $rules"
+	local n
+	n="$(grep -c '127.0.0.1#' "$DNSMASQ_FILE" 2>/dev/null)"
+	echo "Доменов в DNS: ${n:-0}"
+	echo "Устройств «всё в VPN»: $(nft list set inet vpnroute tunnel_macs 2>/dev/null | grep -o '..:..:..:..:..:..' | wc -l)"
+}
+
+cmd_device() {
+	local s
+	case "$1" in
+		""|list)
+			for s in $(uci_sections device); do
+				printf '%-14s %-18s %s\n' \
+					"$(uci -q get vpnroute."$s".name)" \
+					"$(uci -q get vpnroute."$s".mac)" \
+					"$([ "$(uci -q get vpnroute."$s".enabled)" = 1 ] && echo 'VPN' || echo 'напрямую')"
+			done
+			return 0
+			;;
+	esac
+
+	s="$(find_device "$1")" || { echo "Устройство «$1» не найдено" >&2; return 1; }
+	case "$2" in
+		on) uci set vpnroute."$s".enabled=1 ;;
+		off) uci set vpnroute."$s".enabled=0 ;;
+		toggle|"")
+			if [ "$(uci -q get vpnroute."$s".enabled)" = 1 ]; then
+				uci set vpnroute."$s".enabled=0
+			else
+				uci set vpnroute."$s".enabled=1
+			fi
+			;;
+		*) echo "Ожидается on, off или toggle" >&2; return 1 ;;
+	esac
+	uci commit vpnroute
+	"$INIT" reload
+	echo "$(uci -q get vpnroute."$s".name): $([ "$(uci -q get vpnroute."$s".enabled)" = 1 ] && echo 'весь трафик через VPN' || echo 'обычная маршрутизация')"
+}
+
+# Ищет домен или его родительский домен в файле для dnsmasq
+domain_listed() {
+	local d="$1"
+	while [ -n "$d" ]; do
+		grep -qxF "server=/$d/127.0.0.1#$(uci -q get vpnroute.main.dns_port || echo 1053)" "$DNSMASQ_FILE" 2>/dev/null && { echo "$d"; return 0; }
+		case "$d" in
+			*.*) d="${d#*.}" ;;
+			*) d="" ;;
+		esac
+	done
+	return 1
+}
+
+cmd_check() {
+	local t="$1" hit addr
+	[ -n "$t" ] || { echo "Укажите домен или IP" >&2; return 1; }
+
+	if echo "$t" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+		if nft get element inet vpnroute dst4 "{ $t }" >/dev/null 2>&1; then
+			echo "$t: через туннель (входит в список IP)"
+		elif echo "$t" | grep -qE "$FAKE_RE"; then
+			echo "$t: служебный адрес FakeDNS, через туннель"
+		else
+			echo "$t: напрямую"
+		fi
+		return 0
+	fi
+
+	t="$(echo "$t" | tr 'A-Z' 'a-z')"
+	if hit="$(domain_listed "$t")"; then
+		# первая строка Address после Name: — это ответ, а не адрес DNS-сервера
+		addr="$(nslookup "$t" 127.0.0.1 2>/dev/null | awk '/^Name:/ { n = 1 } n && /^Address/ { print $NF; exit }')"
+		if echo "$addr" | grep -qE "$FAKE_RE"; then
+			echo "$t: через туннель (правило $hit, DNS вернул $addr)"
+		else
+			echo "$t: в списке (правило $hit), но DNS вернул «${addr:-нет ответа}» — проверьте, работает ли Xray"
+		fi
+	else
+		echo "$t: напрямую (нет в списках)"
+	fi
+}
+
+cmd_net_ensure() {
+	local mark table
+	mark="$(uci -q get vpnroute.main.fwmark || echo 0x40000)"
+	table="$(uci -q get vpnroute.main.route_table || echo 107)"
+	ip rule show | grep -q "fwmark $mark lookup $table" || ip rule add fwmark "$mark" lookup "$table" pref 1107
+	ip route show table "$table" 2>/dev/null | grep -q '^local' || ip route replace local 0.0.0.0/0 dev lo table "$table"
+}
+
+case "$1" in
+	status) cmd_status ;;
+	status-json) ucode "$STATUS" ;;
+	enable)
+		uci set vpnroute.main.enabled=1
+		uci commit vpnroute
+		"$INIT" enable
+		"$INIT" restart 2>/dev/null
+		sleep 2
+		cmd_status
+		;;
+	disable)
+		uci set vpnroute.main.enabled=0
+		uci commit vpnroute
+		"$INIT" reload
+		sleep 1
+		cmd_status
+		;;
+	apply|reload) "$INIT" reload ;;
+	start|stop|restart) "$INIT" "$1" ;;
+	device) shift; cmd_device "$@" ;;
+	check) cmd_check "$2" ;;
+	gen) ucode "$GEN" --print ;;
+	logs) logread | grep -E 'vpnroute|xray' | tail -n "${2:-50}" ;;
+	net-ensure) cmd_net_ensure ;;
+	""|help|-h|--help) usage ;;
+	*) usage >&2; exit 1 ;;
+esac

@@ -1,0 +1,32 @@
+
+config main 'main'
+	# Общий выключатель. Включайте после добавления сервера.
+	option enabled '0'
+	option log_level 'warning'
+	list lan_iface 'br-lan'
+	# DNS для запросов самого Xray (через туннель, при падении туннеля — напрямую)
+	option dns_upstream 'https://1.1.1.1/dns-query'
+	# При недоступности всех серверов пускать трафик из списков напрямую
+	option fallback_direct '1'
+	option probe_url 'https://www.gstatic.com/generate_204'
+	option probe_interval '1m'
+	# Перенаправлять все DNS-запросы из локальной сети на роутер
+	option dns_hijack '1'
+	# Блокировать DNS-over-TLS/QUIC (порт 853) и известные DoH-серверы
+	option block_dot '1'
+	option block_doh '1'
+	# Не пропускать IPv6 из локальной сети в интернет
+	option block_ipv6 '1'
+	# Зарезервировано: маршрутизация трафика самого роутера (пока не реализовано)
+	option router_traffic '0'
+	# Технические параметры
+	option tproxy_port '12701'
+	option dns_port '1053'
+	option fwmark '0x40000'
+	option route_table '107'
+
+config list 'example'
+	option name 'Пример'
+	option enabled '0'
+	list domain 'example.com'
+	list ip '192.0.2.0/24'

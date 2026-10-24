@@ -1,0 +1,25 @@
+{
+	"luci-app-vpnroute": {
+		"description": "Доступ к настройкам vpnroute",
+		"read": {
+			"uci": [ "vpnroute" ],
+			"ubus": {
+				"file": [ "exec" ],
+				"luci-rpc": [ "getHostHints" ]
+			},
+			"file": {
+				"/usr/bin/vpnroute": [ "exec" ],
+				"/usr/bin/vpnroute status-json": [ "exec" ],
+				"/usr/bin/vpnroute check *": [ "exec" ],
+				"/usr/bin/vpnroute logs *": [ "exec" ]
+			}
+		},
+		"write": {
+			"uci": [ "vpnroute" ],
+			"file": {
+				"/usr/bin/vpnroute device *": [ "exec" ],
+				"/usr/bin/vpnroute apply": [ "exec" ]
+			}
+		}
+	}
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+# vpnroute: восстановить правило маршрутизации после перезапуска интерфейсов
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$(uci -q get vpnroute.main.enabled)" = "1" ] || exit 0
+[ -x /usr/bin/vpnroute ] && /usr/bin/vpnroute net-ensure

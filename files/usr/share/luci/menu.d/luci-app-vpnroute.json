@@ -1,0 +1,29 @@
+{
+	"admin/services/vpnroute": {
+		"title": "VPN-маршрутизация",
+		"order": 60,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-vpnroute" ],
+			"uci": { "vpnroute": true }
+		}
+	},
+	"admin/services/vpnroute/status": {
+		"title": "Состояние",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "vpnroute/status"
+		}
+	},
+	"admin/services/vpnroute/settings": {
+		"title": "Настройки",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "vpnroute/settings"
+		}
+	}
+}
