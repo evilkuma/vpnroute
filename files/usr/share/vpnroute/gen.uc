@@ -15,6 +15,7 @@
 
 import { cursor } from 'uci';
 import { readfile, writefile, rename, mkdir } from 'fs';
+import { builtin_lists } from './builtin.uc';
 
 const RUN_DIR = '/var/etc/vpnroute';
 const XRAY_FILE = RUN_DIR + '/xray.json';
@@ -295,29 +296,34 @@ let loglevel = opt('log_level', 'warning');
 if (!match(fwmark, /^(0x[0-9a-fA-F]+|[0-9]+)$/))
 	die('vpnroute: некорректный fwmark\n');
 
-// Списки доменов и IP
+// Списки доменов и IP: встроенные (входят в программу) и списки владельца
 let domains = [], ips = [];
-uci.foreach('vpnroute', 'list', (s) => {
-	if (!bool(s.enabled, true))
-		return;
-	for (let d in aslist(s.domain)) {
+function add_entries(name, dl, il) {
+	for (let d in dl) {
 		if (strip_comment(d) == '')
 			continue;
 		let n = norm_domain(d);
 		if (n)
 			push(domains, n);
 		else
-			warn(`vpnroute: список ${s['.name']}: пропущен домен «${d}»\n`);
+			warn(`vpnroute: список ${name}: пропущен домен «${d}»\n`);
 	}
-	for (let a in aslist(s.ip)) {
+	for (let a in il) {
 		if (strip_comment(a) == '')
 			continue;
 		let n = norm_ip(a);
 		if (n)
 			push(ips, n);
 		else
-			warn(`vpnroute: список ${s['.name']}: пропущен адрес «${a}»\n`);
+			warn(`vpnroute: список ${name}: пропущен адрес «${a}»\n`);
 	}
+}
+for (let l in builtin_lists(uci))
+	if (l.enabled)
+		add_entries('встроенный ' + l.id, l.domains, l.ips);
+uci.foreach('vpnroute', 'list', (s) => {
+	if (bool(s.enabled, true))
+		add_entries(s['.name'], aslist(s.domain), aslist(s.ip));
 });
 domains = sort(uniq(domains));
 ips = sort(uniq(ips));

@@ -60,7 +60,24 @@ if [ -x /etc/init.d/xray ]; then
 fi
 
 # ---------- файлы ----------
+log "проверяю скрипты"
+# Синтаксическая ошибка в ucode ломает генерацию правил и админку. Проверяем
+# до копирования, чтобы роутер остался на рабочей версии.
+for f in "$FILES"/usr/share/vpnroute/*.uc; do
+	# модули (без #!) проверяются через импортирующие их скрипты:
+	# отдельно они не компилируются
+	head -n1 "$f" | grep -q '^#!' || continue
+	out="$(ucode -c -o /tmp/vpnroute-check.bin "$f" 2>&1)" || {
+		rm -f /tmp/vpnroute-check.bin
+		die "ошибка в ${f#$FILES}, установка отменена, файлы не изменены:
+$out"
+	}
+done
+rm -f /tmp/vpnroute-check.bin
+
 log "копирую файлы"
+# встроенные списки заменяются целиком: удалённые из новой версии не должны остаться
+rm -rf /usr/share/vpnroute/lists
 ( cd "$FILES" && find . -type f ) | while read -r f; do
 	f="${f#./}"
 	if [ "$f" = "etc/config/vpnroute" ] && [ -f /etc/config/vpnroute ]; then

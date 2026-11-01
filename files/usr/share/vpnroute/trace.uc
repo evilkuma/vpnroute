@@ -12,6 +12,7 @@
 
 import { cursor } from 'uci';
 import { readfile, writefile, rename, mkdir, open, unlink } from 'fs';
+import { builtin_lists } from './builtin.uc';
 
 const STATE_DIR = '/tmp/vpnroute-trace';
 const STATE_FILE = STATE_DIR + '/state.json';
@@ -127,14 +128,19 @@ function is_local_name(name) {
 }
 
 let vpn_nets = [];
-uci.foreach('vpnroute', 'list', (s) => {
-	if (s.enabled == '0')
-		return;
-	for (let a in aslist(s.ip)) {
+function add_nets(list) {
+	for (let a in list) {
 		let m = match(trim(split(a, '#')[0]), /^([0-9.]+)(\/([0-9]+))?$/);
 		if (m && ip2int(m[1]) != null)
 			push(vpn_nets, [ ip2int(m[1]), m[3] ? int(m[3]) : 32 ]);
 	}
+}
+for (let l in builtin_lists(uci))
+	if (l.enabled)
+		add_nets(l.ips);
+uci.foreach('vpnroute', 'list', (s) => {
+	if (s.enabled != '0')
+		add_nets(aslist(s.ip));
 });
 
 let dev_all_vpn = false;

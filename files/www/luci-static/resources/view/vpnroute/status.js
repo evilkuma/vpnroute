@@ -154,7 +154,9 @@ return view.extend({
 
 		const lists = E('table', { 'class': 'table' }, [
 			E('tr', { 'class': 'tr table-titles' }, [ E('th', { 'class': 'th' }, _('Список')), E('th', { 'class': 'th' }, _('Доменов')), E('th', { 'class': 'th' }, _('IP и подсетей')), E('th', { 'class': 'th' }, _('Включён')) ])
-		].concat(st.lists.map(function(l) {
+		].concat((st.builtin || []).map(function(l) {
+			return E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td' }, [ l.name, ' ', E('small', { 'style': 'opacity:.6' }, _('встроенный')) ]), E('td', { 'class': 'td' }, String(l.domains)), E('td', { 'class': 'td' }, String(l.ips)), E('td', { 'class': 'td' }, l.enabled ? _('да') : _('нет')) ]);
+		})).concat(st.lists.map(function(l) {
 			return E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td' }, l.name), E('td', { 'class': 'td' }, String(l.domains)), E('td', { 'class': 'td' }, String(l.ips)), E('td', { 'class': 'td' }, l.enabled ? _('да') : _('нет')) ]);
 		})));
 

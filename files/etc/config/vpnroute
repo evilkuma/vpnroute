@@ -27,63 +27,8 @@ config main 'main'
 	option fwmark '0x40000'
 	option route_table '107'
 
-# Список по умолчанию: то, что не работает напрямую у провайдера.
-# Ставится только при первой установке, существующие настройки не меняются.
-config list 'default'
-	option name 'Основной'
+# Свои домены и адреса. Встроенные списки (YouTube, Discord, Telegram и др.)
+# лежат в /usr/share/vpnroute/lists и обновляются вместе с vpnroute.
+config list 'my'
+	option name 'Мои адреса'
 	option enabled '1'
-	# YouTube
-	list domain 'youtube.com'
-	list domain 'youtu.be'
-	list domain 'googlevideo.com'
-	list domain 'ytimg.com'
-	list domain 'ggpht.com'
-	list domain 'yt3.googleusercontent.com'
-	list domain 'youtubei.googleapis.com'
-	list domain 'youtube.googleapis.com'
-	list domain 'jnn-pa.googleapis.com'
-	list domain 'youtube-nocookie.com'
-	list domain 'youtubekids.com'
-	# Claude
-	list domain 'claude.ai'
-	list domain 'claude.com'
-	list domain 'anthropic.com'
-	list domain 'api.anthropic.com'
-	list domain 'platform.claude.com'
-	list domain 'code.claude.com'
-	list domain 'claudeusercontent.com'
-	list domain 'support.claude.com'
-	# Discord
-	list domain 'discord.com'
-	list domain 'discord.gg'
-	list domain 'discordapp.com'
-	list domain 'discordstatus.com'
-	list domain 'dis.gd'
-	list domain 'discordapp.net'
-	list domain 'discordcdn.com'
-	list domain 'discord.media'
-	list ip '66.22.192.0/18'
-	list ip '104.29.0.0/16'
-	# Meta
-	list domain 'facebook.com'
-	list domain 'fbcdn.net'
-	list domain 'fbsbx.com'
-	list domain 'instagram.com'
-	list domain 'meta.com'
-	# TikTok
-	list domain 'tiktok.com'
-	list domain 'tiktokv.com'
-	# Прочее
-	list domain 'chess.com'
-	# Telegram
-	list ip '149.154.160.0/20'
-	list ip '185.76.151.0/24'
-	list ip '91.105.192.0/23'
-	list ip '91.108.4.0/22'
-	list ip '91.108.8.0/22'
-	list ip '91.108.12.0/22'
-	list ip '91.108.16.0/22'
-	list ip '91.108.20.0/22'
-	list ip '91.108.56.0/22'
-	# AliDNS: прямой DNS NekoBox по умолчанию, провайдер его блокирует
-	list ip '223.5.5.5'

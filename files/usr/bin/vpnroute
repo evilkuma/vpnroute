@@ -171,6 +171,17 @@ cmd_list_add() {
 		kind=domain
 	fi
 
+	# уже идёт через VPN по встроенному или другому списку
+	local hit
+	if [ "$kind" = domain ] && hit="$(domain_listed "$value")"; then
+		echo "«$value» уже идёт через VPN (правило $hit)"
+		return 0
+	fi
+	if [ "$kind" = ip ] && nft get element inet vpnroute dst4 "{ $value }" >/dev/null 2>&1; then
+		echo "«$value» уже идёт через VPN (входит в список IP)"
+		return 0
+	fi
+
 	if [ "$target" = "new" ]; then
 		name="${3:-Новый список}"
 		s="$(uci add vpnroute list)"

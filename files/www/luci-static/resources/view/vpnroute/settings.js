@@ -3,6 +3,7 @@
 'require form';
 'require uci';
 'require network';
+'require fs';
 
 const reDomain = /^[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)*$/;
 const reIp = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(\/(\d{1,2}))?$/;
@@ -87,10 +88,16 @@ function summarizeLink(link) {
 
 return view.extend({
 	load: function() {
-		return network.getHostHints();
+		return Promise.all([
+			network.getHostHints(),
+			fs.exec('/usr/bin/vpnroute', [ 'status-json' ]).then(function(res) {
+				return JSON.parse(res.stdout || '{}').builtin || [];
+			}).catch(function() { return []; })
+		]);
 	},
 
-	render: function(hosts) {
+	render: function(data) {
+		const hosts = data[0], builtin = data[1];
 		let m, s, o;
 
 		m = new form.Map('vpnroute', _('VPN-маршрутизация'),
@@ -226,9 +233,23 @@ return view.extend({
 			}
 		};
 
+		// ---------- Встроенные списки ----------
+		if (builtin.length) {
+			s = m.section(form.NamedSection, 'main', 'main', _('Встроенные списки'),
+				_('Входят в vpnroute и обновляются вместе с ним. Изменить их нельзя, только выключить. Свои адреса добавляйте в списки ниже.'));
+			s.addremove = false;
+			builtin.forEach(function(l) {
+				// выключенный список хранится как builtin_<id> = 0, новые списки включены сразу
+				o = s.option(form.Flag, 'builtin_' + l.id, l.name,
+					_('Доменов: %d, IP и подсетей: %d').format(l.domains, l.ips));
+				o.default = '1';
+				o.rmempty = false;
+			});
+		}
+
 		// ---------- Списки ----------
-		s = m.section(form.GridSection, 'list', _('Списки'),
-			_('Домены указываются без «www» и «*.»: example.com включает все поддомены. По одной записи в строке, после # можно писать комментарий.'));
+		s = m.section(form.GridSection, 'list', _('Мои списки'),
+			_('Обновление vpnroute их не трогает. Домены указываются без «www» и «*.»: example.com включает все поддомены. По одной записи в строке, после # можно писать комментарий.'));
 		s.anonymous = true;
 		s.addremove = true;
 		s.sortable = true;

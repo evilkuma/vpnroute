@@ -5,6 +5,7 @@
 
 import { cursor } from 'uci';
 import { popen } from 'fs';
+import { builtin_lists } from './builtin.uc';
 
 function sh(cmd) {
 	let p = popen(cmd, 'r');
@@ -38,9 +39,13 @@ let res = {
 	rules: system('nft list table inet vpnroute >/dev/null 2>&1') == 0,
 	version: split(sh('xray version 2>/dev/null'), '\n')[0] || '',
 	servers: [],
+	builtin: [],
 	lists: [],
 	devices: []
 };
+
+for (let l in builtin_lists(uci))
+	push(res.builtin, { id: l.id, name: l.name, enabled: l.enabled, domains: length(l.domains), ips: length(l.ips) });
 
 uci.foreach('vpnroute', 'server', (s) => {
 	let m = match(s.link || '', /^vless:\/\/[^@]*@(\[[^\]]+\]|[^:\/?#]+):([0-9]+)[^?#]*\??([^#]*)/);
