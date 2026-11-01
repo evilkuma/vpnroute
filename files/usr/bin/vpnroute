@@ -32,7 +32,33 @@ usage() {
   list-add <список> <домен|IP> [название]
                             добавить запись в список; вместо имени списка
                             «new» создаёт новый список с указанным названием
+
+Обновление с GitHub:
+  version                   установленная версия
+  update check              проверить, есть ли новая версия
+  update install            установить новую версию (в фоне, журнал: update status)
+  update status             состояние обновления (JSON)
 EOF
+}
+
+UPDATE=/usr/share/vpnroute/update.uc
+UPDATE_PID=/tmp/vpnroute-update/install.pid
+
+cmd_update() {
+	case "$1" in
+		check) ucode "$UPDATE" check ;;
+		install)
+			mkdir -p /tmp/vpnroute-update
+			# процесс отвязан от вызвавшего: установщик перезапускает rpcd
+			start-stop-daemon -S -b -m -p "$UPDATE_PID" -x /usr/bin/ucode -- "$UPDATE" run 2>/dev/null || {
+				echo "Обновление уже идёт" >&2
+				return 1
+			}
+			echo "Обновление запущено, ход установки: vpnroute update status"
+			;;
+		status) ucode "$UPDATE" status ;;
+		*) echo "Ожидается check, install или status" >&2; return 1 ;;
+	esac
 }
 
 TRACE_DIR=/tmp/vpnroute-trace
@@ -304,6 +330,8 @@ case "$1" in
 	start|stop|restart) "$INIT" "$1" ;;
 	device) shift; cmd_device "$@" ;;
 	trace) shift; cmd_trace "$@" ;;
+	update) shift; cmd_update "$@" ;;
+	version) cat /usr/share/vpnroute/VERSION 2>/dev/null || echo "неизвестна" ;;
 	list-add) shift; cmd_list_add "$@" ;;
 	check) cmd_check "$2" ;;
 	gen) ucode "$GEN" --print ;;

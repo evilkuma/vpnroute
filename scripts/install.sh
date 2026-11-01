@@ -73,9 +73,22 @@ log "копирую файлы"
 done
 
 chmod 755 /etc/init.d/vpnroute /etc/init.d/vpnroute-trace /usr/bin/vpnroute \
-	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc
+	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc \
+	/usr/share/vpnroute/update.uc
 # служба диагностики запускается только по запросу, не при загрузке
 /etc/init.d/vpnroute-trace disable 2>/dev/null || true
+
+# ---------- проверка обновлений раз в сутки ----------
+# минута и час случайные, чтобы роутеры не обращались к GitHub одновременно
+CRON=/etc/crontabs/root
+if ! grep -q 'vpnroute update check' "$CRON" 2>/dev/null; then
+	log "включаю ежедневную проверку обновлений"
+	mkdir -p /etc/crontabs
+	awk 'BEGIN { srand(); printf "%d %d * * * /usr/bin/vpnroute update check >/dev/null 2>&1\n", int(rand() * 60), 3 + int(rand() * 3) }' >> "$CRON"
+	/etc/init.d/cron enable 2>/dev/null || true
+	/etc/init.d/cron restart 2>/dev/null || true
+fi
+log "версия vpnroute: $(cat /usr/share/vpnroute/VERSION 2>/dev/null || echo неизвестна)"
 
 # ---------- dnsmasq ----------
 mkdir -p /etc/vpnroute

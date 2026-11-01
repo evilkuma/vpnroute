@@ -14,7 +14,8 @@
 				"/usr/bin/vpnroute logs *": [ "exec" ],
 				"/usr/bin/vpnroute trace devices": [ "exec" ],
 				"/usr/bin/vpnroute trace dump": [ "exec" ],
-				"/usr/bin/vpnroute trace status": [ "exec" ]
+				"/usr/bin/vpnroute trace status": [ "exec" ],
+				"/usr/bin/vpnroute update status": [ "exec" ]
 			}
 		},
 		"write": {
@@ -24,7 +25,9 @@
 				"/usr/bin/vpnroute apply": [ "exec" ],
 				"/usr/bin/vpnroute trace start *": [ "exec" ],
 				"/usr/bin/vpnroute trace stop": [ "exec" ],
-				"/usr/bin/vpnroute list-add *": [ "exec" ]
+				"/usr/bin/vpnroute list-add *": [ "exec" ],
+				"/usr/bin/vpnroute update check": [ "exec" ],
+				"/usr/bin/vpnroute update install": [ "exec" ]
 			}
 		}
 	}

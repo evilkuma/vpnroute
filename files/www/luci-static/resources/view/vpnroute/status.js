@@ -29,6 +29,96 @@ return view.extend({
 		});
 	},
 
+	loadUpdate: function() {
+		return run([ 'update', 'status' ]).then(JSON.parse).catch(function(e) {
+			return { error: e.message };
+		});
+	},
+
+	refreshUpdate: function() {
+		return this.loadUpdate().then(L.bind(function(up) {
+			dom.content(this.updateBox, this.renderUpdate(up));
+			return up;
+		}, this));
+	},
+
+	checkUpdate: function() {
+		// при ошибке check завершается с кодом 1, текст ошибки есть в состоянии
+		return run([ 'update', 'check' ]).catch(function() {}).then(L.bind(this.refreshUpdate, this));
+	},
+
+	installUpdate: function(up) {
+		if (!confirm(_('Установить версию %s? Интернет пропадёт на несколько секунд, страница перезагрузится сама.').format(up.latest)))
+			return;
+		return run([ 'update', 'install' ]).then(L.bind(function() {
+			this.pollUpdate(up.latest);
+		}, this)).catch(function(e) {
+			ui.addNotification(null, E('p', e.message), 'danger');
+		});
+	},
+
+	// Во время установки rpcd перезапускается, поэтому отдельные запросы
+	// могут не пройти: продолжаем опрашивать
+	pollUpdate: function(target) {
+		const self = this;
+		const tick = function() {
+			self.refreshUpdate().then(function(up) {
+				if (up.error && !up.installed)
+					return setTimeout(tick, 2000);
+				if (up.installing || up.result === 'running')
+					return setTimeout(tick, 2000);
+				if (up.result === 'ok' && up.installed === target) {
+					ui.addNotification(null, E('p', _('Установлена версия %s, перезагружаю страницу').format(target)), 'info');
+					setTimeout(function() { location.reload(); }, 3000);
+				}
+			}).catch(function() { setTimeout(tick, 2000); });
+		};
+		setTimeout(tick, 2000);
+	},
+
+	renderUpdate: function(up) {
+		const rows = [];
+		const fmt = function(ts) { return ts ? new Date(ts * 1000).toLocaleString() : _('ещё не проверялось'); };
+		const busy = up.installing || up.result === 'running';
+
+		rows.push(E('p', {}, [
+			_('Установлена версия: '), E('strong', up.installed || _('неизвестна')),
+			E('small', { 'style': 'opacity:.7;margin-left:12px' }, _('последняя проверка: ') + fmt(up.checked))
+		]));
+
+		if (up.error && !busy)
+			rows.push(E('div', { 'class': 'alert-message warning' }, up.error));
+
+		if (busy) {
+			rows.push(E('div', { 'class': 'alert-message notice' }, _('Идёт установка обновления…')));
+		}
+		else if (up.available) {
+			rows.push(E('div', { 'class': 'alert-message notice' }, [
+				E('strong', _('Доступна версия %s').format(up.latest)),
+				up.notes ? E('pre', { 'style': 'white-space:pre-wrap;margin:8px 0 0' }, up.notes) : ''
+			]));
+			rows.push(E('button', {
+				'class': 'cbi-button cbi-button-apply',
+				'click': ui.createHandlerFn(this, 'installUpdate', up)
+			}, _('Обновить до %s').format(up.latest)));
+			rows.push(' ');
+		}
+		else if (up.result === 'ok' && up.finished) {
+			rows.push(E('p', { 'class': 'cbi-value-description' }, _('Обновление установлено: ') + fmt(up.finished)));
+		}
+
+		if (!busy)
+			rows.push(E('button', {
+				'class': 'cbi-button cbi-button-neutral',
+				'click': ui.createHandlerFn(this, 'checkUpdate')
+			}, _('Проверить обновления')));
+
+		if (up.log && (busy || up.result === 'error'))
+			rows.push(E('pre', { 'style': 'max-height:250px;overflow:auto;white-space:pre-wrap;margin-top:8px' }, up.log));
+
+		return E('div', {}, rows);
+	},
+
 	refresh: function() {
 		return this.load().then(L.bind(function(st) {
 			dom.content(document.getElementById('vpnroute-status'), this.renderStatus(st));
@@ -132,9 +222,17 @@ return view.extend({
 	},
 
 	render: function(st) {
+		const box = this.updateBox = E('div', { 'id': 'vpnroute-update' }, E('em', _('Загрузка…')));
+		this.refreshUpdate().then(L.bind(function(up) {
+			// страницу открыли во время установки
+			if (up.installing || up.result === 'running')
+				this.pollUpdate(up.latest);
+		}, this));
+
 		return E('div', { 'class': 'cbi-map' }, [
 			E('h2', _('VPN-маршрутизация: состояние')),
 			E('div', { 'id': 'vpnroute-status' }, this.renderStatus(st)),
+			E('h3', _('Версия и обновления')), box,
 			this.renderCheck(),
 			this.renderLogs()
 		]);
