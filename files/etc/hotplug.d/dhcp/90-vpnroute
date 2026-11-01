@@ -1,0 +1,29 @@
+#!/bin/sh
+# vpnroute: поддерживает набор IP-адресов устройств «весь трафик через VPN»
+# (tunnel_ip4) при выдаче и освобождении адресов DHCP. Нужен для устройств за
+# повторителями, которые подменяют MAC. Полный набор собирает gen.uc.
+
+[ -n "$IPADDR" ] && [ -n "$MACADDR" ] || exit 0
+case "$IPADDR" in *:*) exit 0 ;; esac
+nft list set inet vpnroute tunnel_ip4 >/dev/null 2>&1 || exit 0
+
+. /lib/functions.sh
+
+mac="$(echo "$MACADDR" | tr 'A-Z' 'a-z')"
+found=0
+check_device() {
+	local m e
+	config_get m "$1" mac
+	config_get e "$1" enabled 0
+	[ "$e" = 1 ] && [ "$(echo "$m" | tr 'A-Z' 'a-z')" = "$mac" ] && found=1
+}
+config_load vpnroute
+config_foreach check_device device
+
+if [ "$ACTION" != remove ] && [ "$found" = 1 ]; then
+	nft add element inet vpnroute tunnel_ip4 "{ $IPADDR }"
+else
+	# адрес освобождён или достался другому устройству
+	nft delete element inet vpnroute tunnel_ip4 "{ $IPADDR }" 2>/dev/null
+fi
+exit 0

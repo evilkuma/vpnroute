@@ -109,6 +109,23 @@ for (let l in leases())
 let uci = cursor();
 uci.load('vpnroute');
 
+// Локальные имена (устройство дописывает к запросу домен сети, например
+// graph.facebook.com.lan): их нельзя добавлять в списки
+let local_sfx = [ 'lan', 'local', 'home.arpa', 'in-addr.arpa' ];
+uci.load('dhcp');
+uci.foreach('dhcp', 'dnsmasq', (s) => {
+	if (s.domain)
+		local_sfx[0] = lc(s.domain);
+	return false;
+});
+
+function is_local_name(name) {
+	for (let sfx in local_sfx)
+		if (name == sfx || substr(name, -length(sfx) - 1) == '.' + sfx)
+			return true;
+	return false;
+}
+
 let vpn_nets = [];
 uci.foreach('vpnroute', 'list', (s) => {
 	if (s.enabled == '0')
@@ -155,6 +172,8 @@ let dns_tail = '';
 
 function dns_row_add(serial, t, qtype, name) {
 	let r = { t: t, name: name, qtype: qtype, answer: '', st: 'wait', route: 'direct' };
+	if (is_local_name(name))
+		r.st = r.route = 'local';
 	dns_by_serial[serial] = r;
 	push(dns_rows, r);
 	if (length(dns_rows) > MAX_DNS) {
@@ -181,7 +200,7 @@ function dns_line(line) {
 	}
 
 	let r = dns_by_serial[serial];
-	if (!r)
+	if (!r || r.route == 'local')
 		return;
 
 	if (action == 'forwarded') {

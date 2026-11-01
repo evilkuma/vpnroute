@@ -7,9 +7,11 @@ config main 'main'
 	# DNS для запросов самого Xray (через туннель, при падении туннеля — напрямую)
 	option dns_upstream 'https://1.1.1.1/dns-query'
 	# При недоступности всех серверов пускать трафик из списков напрямую
-	option fallback_direct '1'
+	option fallback_direct '0'
 	option probe_url 'https://www.gstatic.com/generate_204'
-	option probe_interval '1m'
+	# Среднее время между проверками. Сервер считается недоступным после
+	# 4 неудачных проверок подряд (около минуты при 15s)
+	option probe_interval '15s'
 	# Перенаправлять все DNS-запросы из локальной сети на роутер
 	option dns_hijack '1'
 	# Блокировать DNS-over-TLS/QUIC (порт 853) и известные DoH-серверы
@@ -25,8 +27,63 @@ config main 'main'
 	option fwmark '0x40000'
 	option route_table '107'
 
-config list 'example'
-	option name 'Пример'
-	option enabled '0'
-	list domain 'example.com'
-	list ip '192.0.2.0/24'
+# Список по умолчанию: то, что не работает напрямую у провайдера.
+# Ставится только при первой установке, существующие настройки не меняются.
+config list 'default'
+	option name 'Основной'
+	option enabled '1'
+	# YouTube
+	list domain 'youtube.com'
+	list domain 'youtu.be'
+	list domain 'googlevideo.com'
+	list domain 'ytimg.com'
+	list domain 'ggpht.com'
+	list domain 'yt3.googleusercontent.com'
+	list domain 'youtubei.googleapis.com'
+	list domain 'youtube.googleapis.com'
+	list domain 'jnn-pa.googleapis.com'
+	list domain 'youtube-nocookie.com'
+	list domain 'youtubekids.com'
+	# Claude
+	list domain 'claude.ai'
+	list domain 'claude.com'
+	list domain 'anthropic.com'
+	list domain 'api.anthropic.com'
+	list domain 'platform.claude.com'
+	list domain 'code.claude.com'
+	list domain 'claudeusercontent.com'
+	list domain 'support.claude.com'
+	# Discord
+	list domain 'discord.com'
+	list domain 'discord.gg'
+	list domain 'discordapp.com'
+	list domain 'discordstatus.com'
+	list domain 'dis.gd'
+	list domain 'discordapp.net'
+	list domain 'discordcdn.com'
+	list domain 'discord.media'
+	list ip '66.22.192.0/18'
+	list ip '104.29.0.0/16'
+	# Meta
+	list domain 'facebook.com'
+	list domain 'fbcdn.net'
+	list domain 'fbsbx.com'
+	list domain 'instagram.com'
+	list domain 'meta.com'
+	# TikTok
+	list domain 'tiktok.com'
+	list domain 'tiktokv.com'
+	# Прочее
+	list domain 'chess.com'
+	# Telegram
+	list ip '149.154.160.0/20'
+	list ip '185.76.151.0/24'
+	list ip '91.105.192.0/23'
+	list ip '91.108.4.0/22'
+	list ip '91.108.8.0/22'
+	list ip '91.108.12.0/22'
+	list ip '91.108.16.0/22'
+	list ip '91.108.20.0/22'
+	list ip '91.108.56.0/22'
+	# AliDNS: прямой DNS NekoBox по умолчанию, провайдер его блокирует
+	list ip '223.5.5.5'

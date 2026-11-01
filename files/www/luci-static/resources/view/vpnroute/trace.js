@@ -234,7 +234,7 @@ return view.extend({
 				E('td', { 'class': 'td', 'style': 'white-space:nowrap' }, traffic),
 				E('td', { 'class': 'td' }, route),
 				E('td', { 'class': 'td' }, self.statusCell(r.st, group ? r.stats : null)),
-				E('td', { 'class': 'td' }, routes.indexOf('vpn') >= 0 && routes.length === 1 ? '' : self.addButton(target))
+				E('td', { 'class': 'td' }, routes.length === 1 && (routes[0] === 'vpn' || routes[0] === 'local') ? '' : self.addButton(target))
 			]);
 		});
 

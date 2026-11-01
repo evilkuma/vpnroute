@@ -109,15 +109,16 @@ return view.extend({
 
 		o = s.taboption('general', form.Flag, 'fallback_direct', _('Напрямую при недоступности VPN'),
 			_('Если ни один сервер не отвечает, трафик из списков пойдёт напрямую. Иначе он будет недоступен.'));
-		o.default = '1';
+		o.default = '0';
 		o.rmempty = false;
 
 		o = s.taboption('general', form.Value, 'probe_url', _('Адрес для проверки серверов'));
 		o.default = 'https://www.gstatic.com/generate_204';
 		o.placeholder = o.default;
 
-		o = s.taboption('general', form.Value, 'probe_interval', _('Интервал проверки'), _('Например: 30s, 1m, 5m'));
-		o.default = '1m';
+		o = s.taboption('general', form.Value, 'probe_interval', _('Интервал проверки'),
+			_('Среднее время между проверками, не меньше 10s. Сервер считается недоступным после 4 неудачных проверок подряд.'));
+		o.default = '15s';
 		o.placeholder = o.default;
 
 		o = s.taboption('general', form.ListValue, 'log_level', _('Подробность журнала Xray'));

@@ -285,7 +285,7 @@ let dns_port = int(opt('dns_port', '1053'));
 let fwmark = opt('fwmark', '0x40000');
 let lan_ifaces = aslist(opt('lan_iface', 'br-lan'));
 let dns_upstream = opt('dns_upstream', 'https://1.1.1.1/dns-query');
-let fallback = bool(opt('fallback_direct', '1'), true);
+let fallback = bool(opt('fallback_direct', '0'), false);
 let dns_hijack = bool(opt('dns_hijack', '1'), true);
 let block_dot = bool(opt('block_dot', '1'), true);
 let block_doh = bool(opt('block_doh', '1'), true);
@@ -335,6 +335,20 @@ uci.foreach('vpnroute', 'device', (s) => {
 });
 macs = sort(uniq(macs));
 
+// IP-адреса этих устройств из аренд DHCP. Нужны, когда устройство подключено
+// через повторитель, который подменяет MAC: в аренде настоящий MAC, а пакеты
+// приходят на роутер с MAC повторителя. При выдаче и освобождении адреса набор
+// обновляет /etc/hotplug.d/dhcp/90-vpnroute.
+function device_ips(lease_file) {
+	let res = [];
+	for (let line in split(readfile(lease_file) || '', '\n')) {
+		let f = split(trim(line), ' ');
+		if (length(f) >= 3 && index(macs, lc(f[1])) >= 0 && is_ipv4(f[2]))
+			push(res, f[2]);
+	}
+	return sort(uniq(res));
+}
+
 // Серверы
 let proxies = [], server_hosts = [];
 uci.foreach('vpnroute', 'server', (s) => {
@@ -357,11 +371,26 @@ if (up_host && !is_ipv4(up_host[1]))
 
 // Домен локальной сети (обычно lan)
 let lan_domain = 'lan';
+let lease_file = '/tmp/dhcp.leases';
 uci.load('dhcp');
 uci.foreach('dhcp', 'dnsmasq', (s) => {
 	if (s.domain)
 		lan_domain = s.domain;
+	if (s.leasefile)
+		lease_file = s.leasefile;
 	return false;
+});
+let dev_ips = device_ips(lease_file);
+
+// Локальные имена в списках создают петлю DNS: dnsmasq отправляет их в Xray,
+// а Xray возвращает локальные имена обратно dnsmasq.
+domains = filter(domains, (d) => {
+	for (let sfx in [ lan_domain, 'local', 'home.arpa', 'in-addr.arpa' ])
+		if (d == sfx || substr(d, -length(sfx) - 1) == '.' + sfx) {
+			warn(`vpnroute: пропущен локальный домен «${d}»\n`);
+			return false;
+		}
+	return true;
 });
 
 // ---------- конфигурация Xray ----------
@@ -453,12 +482,23 @@ let xray = {
 	routing: routing
 };
 
+// Проверка серверов. Обычный observatory считает сервер мёртвым после одной
+// неудачной проверки и до следующей (минуту) пускает трафик напрямую.
+// burstObservatory считает сервер мёртвым, только если не прошла ни одна из
+// последних PROBE_SAMPLES проверок, а при пропаже интернета у самого роутера
+// (connectivity) неудачи не засчитывает.
+const PROBE_SAMPLES = 4;
 if (use_balancer) {
-	xray.observatory = {
+	xray.burstObservatory = {
 		subjectSelector: [ 'proxy-' ],
-		probeUrl: opt('probe_url', 'https://www.gstatic.com/generate_204'),
-		probeInterval: opt('probe_interval', '1m'),
-		enableConcurrency: true
+		pingConfig: {
+			destination: opt('probe_url', 'https://www.gstatic.com/generate_204'),
+			connectivity: 'http://connectivitycheck.gstatic.com/generate_204',
+			// interval — среднее время между проверками одного сервера
+			interval: opt('probe_interval', '15s'),
+			sampling: PROBE_SAMPLES,
+			timeout: '5s'
+		}
 	};
 }
 
@@ -488,6 +528,7 @@ nft += nft_set('bypass4', 'ipv4_addr', 'interval', BYPASS4);
 nft += nft_set('dst4', 'ipv4_addr', 'interval', ips);
 // «devices» в nftables — зарезервированное слово, поэтому tunnel_macs
 nft += nft_set('tunnel_macs', 'ether_addr', null, macs);
+nft += nft_set('tunnel_ip4', 'ipv4_addr', null, dev_ips);
 
 nft += '\n\tchain pre_mangle {\n';
 nft += '\t\ttype filter hook prerouting priority mangle; policy accept;\n';
@@ -500,6 +541,7 @@ if (dns_hijack)
 nft += `\t\tip daddr ${FAKE_POOL} goto to_proxy\n`;
 nft += '\t\tip daddr @dst4 goto to_proxy\n';
 nft += '\t\tether saddr @tunnel_macs goto to_proxy\n';
+nft += '\t\tip saddr @tunnel_ip4 goto to_proxy\n';
 nft += '\t}\n';
 
 nft += '\n\tchain to_proxy {\n';
@@ -512,8 +554,10 @@ nft += '\t\ttype nat hook prerouting priority dstnat - 5; policy accept;\n';
 nft += `\t\tiifname != { ${lan} } return\n`;
 nft += '\t\tmeta nfproto != ipv4 return\n';
 // redirect с портом требует явного протокола в том же правиле
-for (let proto in [ 'udp', 'tcp' ])
+for (let proto in [ 'udp', 'tcp' ]) {
 	nft += `\t\t${proto} dport 53 ether saddr @tunnel_macs redirect to :${dns_port}\n`;
+	nft += `\t\t${proto} dport 53 ip saddr @tunnel_ip4 redirect to :${dns_port}\n`;
+}
 if (dns_hijack)
 	for (let proto in [ 'udp', 'tcp' ])
 		nft += `\t\t${proto} dport 53 redirect to :53\n`;
