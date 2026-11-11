@@ -356,6 +356,35 @@ return baseclass.extend({
 		return E('div', { 'class': 'vr-adder' }, [ E('div', { 'class': 'line' }, [ input, comment, addBtn ]), hint ]);
 	},
 
+	// ---------- проверка без VPN ----------
+
+	// Роутер открывает сайт напрямую (адрес — от DNS провайдера) и через VPN
+	// и показывает, на каком шаге прямое подключение обрывается.
+	// host — куда вывести результат (строка записи или пункт найденного домена)
+	probe: function(domain, main) {
+		let box = main.querySelector('.vr-probe');
+		if (!box) {
+			box = E('div', { 'class': 'vr-probe', 'aria-live': 'polite' });
+			main.appendChild(box);
+		}
+		dom.content(box, E('p', { 'class': 'vr-busy' }, _('Проверяю напрямую и через VPN, до 15 секунд…')));
+		return core.runJson([ 'probe', domain ]).then(function(r) {
+			const head = E('p', { 'class': 'sum ' + (r.direct_ok ? 'ok' : (r.vpn_ok ? 'route' : 'bad')) }, r.text);
+			dom.content(box, [
+				head,
+				E('ul', {}, (r.steps || []).map(function(s) {
+					return E('li', { 'class': s.vpn ? 'vpn' : '' }, [
+						E('span', { 'class': 'vr-st ' + (s.ok ? 'ok' : 'bad') }, s.name), ' ', E('span', { 'class': 'muted' }, s.text)
+					]);
+				})),
+				core.button(_('Скрыть'), function() { box.remove(); }, 'quiet')
+			]);
+		}).catch(function(e) {
+			dom.content(box, [ E('p', { 'class': 'sum bad' }, _('Проверка не удалась: %s').format(e.message)),
+				core.button(_('Скрыть'), function() { box.remove(); }, 'quiet') ]);
+		});
+	},
+
 	// ---------- связанные домены ----------
 
 	// Сайт открывается на роутере через VPN, из страницы и её скриптов
@@ -472,14 +501,20 @@ return baseclass.extend({
 			else if (g.common)
 				note = _('общий сервис, обычно работает и напрямую');
 			const hosts = g.hosts.filter(function(h) { return h !== g.site; });
-			return E('li', {}, E('label', {}, [
-				input,
-				E('span', {}, [
-					E('span', { 'class': 't' }, core.showDomain(g.site)), ' ',
-					note ? E('span', { 'class': 'note' + (g.related ? ' route' : '') }, note) : '', ' ',
-					hosts.length ? E('small', {}, hosts.slice(0, 3).join(', ') + (hosts.length > 3 ? _(' и ещё %d').format(hosts.length - 3) : '')) : ''
-				])
-			]));
+			const text = E('span', { 'class': 'main' }, [
+				E('span', { 'class': 't' }, core.showDomain(g.site)), ' ',
+				note ? E('span', { 'class': 'note' + (g.related ? ' route' : '') }, note) : '', ' ',
+				hosts.length ? E('small', {}, hosts.slice(0, 3).join(', ') + (hosts.length > 3 ? _(' и ещё %d').format(hosts.length - 3) : '')) : ''
+			]);
+			// проверяется адрес, найденный на странице: у static.example.com главной может не быть
+			const target = g.hosts[0] || g.site;
+			const li = E('li', {}, [
+				E('label', {}, [ input, text ]),
+				core.iconButton('probe', _('Проверить, открывается ли %s без VPN').format(core.showDomain(target)), function() {
+					return self.probe(target, li);
+				})
+			]);
+			return li;
 		};
 
 		const addChecked = function() {
@@ -575,6 +610,10 @@ return baseclass.extend({
 					n.addEventListener('keydown', function(ev) { if (ev.key === 'Enter' || ev.key === 'Escape') n.blur(); });
 					return n;
 				};
+				if (e.kind === 'domain')
+					side.push(core.iconButton('probe', _('Проверить, открывается ли %s без VPN').format(shown), function() {
+						return self.probe(e.value, row.querySelector('.main'));
+					}));
 				if (readonly) {
 					note = e.comment ? E('div', { 'class': 's' }, e.comment) : '';
 				}

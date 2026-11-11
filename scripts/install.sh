@@ -93,7 +93,7 @@ done
 
 chmod 755 /etc/init.d/vpnroute /etc/init.d/vpnroute-trace /usr/bin/vpnroute \
 	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc \
-	/usr/share/vpnroute/update.uc /usr/share/vpnroute/discover.uc
+	/usr/share/vpnroute/update.uc /usr/share/vpnroute/discover.uc /usr/share/vpnroute/probe.uc
 # служба диагностики запускается только по запросу, не при загрузке
 /etc/init.d/vpnroute-trace disable 2>/dev/null || true
 

@@ -24,7 +24,8 @@ const ICONS = {
 	edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
 	search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
 	close: 'M6 6l12 12M18 6L6 18',
-	refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7'
+	refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+	probe: 'M3 12h4l3-7 4 14 3-7h4'
 };
 
 let statusEl = null, statusTimer = null;
