@@ -197,6 +197,12 @@ cmd_list_add() {
 		fi
 	fi
 
+	# выключенная в интерфейсе запись («#off значение») — включить её, а не дублировать
+	if [ "$target" != "new" ]; then
+		local old
+		old="$(uci -q -d "$NL" get vpnroute."$s"."$kind" | grep -F "#off $value" | awk -v v="$value" '{ sub(/^#off[[:space:]]+/, ""); split($0, a, "#"); gsub(/[[:space:]]+$/, "", a[1]); if (a[1] == v) { print; exit } }')"
+		[ -n "$old" ] && uci del_list vpnroute."$s"."$kind"="#off $old"
+	fi
 	uci add_list vpnroute."$s"."$kind"="$value"
 	uci commit vpnroute
 	"$INIT" reload

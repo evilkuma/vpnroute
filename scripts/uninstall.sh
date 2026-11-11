@@ -25,7 +25,7 @@ if [ "$(uci -q get dhcp.@dnsmasq[0].serversfile)" = "/etc/vpnroute/dnsmasq.serve
 fi
 
 rm -f /etc/init.d/vpnroute /usr/bin/vpnroute /etc/hotplug.d/iface/90-vpnroute /etc/hotplug.d/dhcp/90-vpnroute
-rm -rf /usr/share/vpnroute /var/etc/vpnroute /etc/vpnroute /www/luci-static/resources/view/vpnroute /tmp/vpnroute-update
+rm -rf /usr/share/vpnroute /var/etc/vpnroute /etc/vpnroute /www/luci-static/resources/view/vpnroute /www/luci-static/resources/vpnroute /tmp/vpnroute-update
 if grep -q 'vpnroute update check' /etc/crontabs/root 2>/dev/null; then
 	sed -i '/vpnroute update check/d' /etc/crontabs/root
 	/etc/init.d/cron restart 2>/dev/null

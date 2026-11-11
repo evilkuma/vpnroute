@@ -4,7 +4,7 @@
 		"read": {
 			"uci": [ "vpnroute" ],
 			"ubus": {
-				"file": [ "exec" ],
+				"file": [ "exec", "read" ],
 				"luci-rpc": [ "getHostHints" ]
 			},
 			"file": {
@@ -15,7 +15,8 @@
 				"/usr/bin/vpnroute trace devices": [ "exec" ],
 				"/usr/bin/vpnroute trace dump": [ "exec" ],
 				"/usr/bin/vpnroute trace status": [ "exec" ],
-				"/usr/bin/vpnroute update status": [ "exec" ]
+				"/usr/bin/vpnroute update status": [ "exec" ],
+				"/usr/share/vpnroute/lists/*": [ "read" ]
 			}
 		},
 		"write": {
@@ -23,6 +24,9 @@
 			"file": {
 				"/usr/bin/vpnroute device *": [ "exec" ],
 				"/usr/bin/vpnroute apply": [ "exec" ],
+				"/usr/bin/vpnroute enable": [ "exec" ],
+				"/usr/bin/vpnroute disable": [ "exec" ],
+				"/usr/bin/vpnroute restart": [ "exec" ],
 				"/usr/bin/vpnroute trace start *": [ "exec" ],
 				"/usr/bin/vpnroute trace stop": [ "exec" ],
 				"/usr/bin/vpnroute list-add *": [ "exec" ],

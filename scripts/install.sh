@@ -78,6 +78,8 @@ rm -f /tmp/vpnroute-check.bin
 log "копирую файлы"
 # встроенные списки заменяются целиком: удалённые из новой версии не должны остаться
 rm -rf /usr/share/vpnroute/lists
+# интерфейс тоже: страницы прежних версий не должны остаться
+rm -rf /www/luci-static/resources/view/vpnroute /www/luci-static/resources/vpnroute
 ( cd "$FILES" && find . -type f ) | while read -r f; do
 	f="${f#./}"
 	if [ "$f" = "etc/config/vpnroute" ] && [ -f /etc/config/vpnroute ]; then
