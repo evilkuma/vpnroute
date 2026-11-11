@@ -4,6 +4,9 @@
 #   sh /tmp/vpnroute/scripts/install.sh [--no-deps]
 
 set -e
+# Обновление из LuCI запускает установку в фоне со строгой маской (077):
+# без этого файлы интерфейса получат права 600 и веб-сервер ответит 403
+umask 022
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 FILES="$SRC/files"
@@ -91,6 +94,7 @@ rm -rf /www/luci-static/resources/view/vpnroute /www/luci-static/resources/vpnro
 	tr -d '\r' < "$FILES/$f" > "/$f"
 done
 
+chmod -R a+rX /www/luci-static/resources/vpnroute /www/luci-static/resources/view/vpnroute 	/usr/share/vpnroute /usr/share/luci/menu.d/luci-app-vpnroute.json /usr/share/rpcd/acl.d/luci-app-vpnroute.json
 chmod 755 /etc/init.d/vpnroute /etc/init.d/vpnroute-trace /usr/bin/vpnroute \
 	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc \
 	/usr/share/vpnroute/update.uc /usr/share/vpnroute/discover.uc /usr/share/vpnroute/probe.uc
