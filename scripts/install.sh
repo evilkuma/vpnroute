@@ -7,7 +7,7 @@ set -e
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 FILES="$SRC/files"
-DEPS="xray-core kmod-nft-tproxy ip-full ucode ucode-mod-uci ucode-mod-fs"
+DEPS="xray-core kmod-nft-tproxy ip-full ucode ucode-mod-uci ucode-mod-fs curl"
 SERVERS_FILE=/etc/vpnroute/dnsmasq.servers
 NO_DEPS=0
 
@@ -93,7 +93,7 @@ done
 
 chmod 755 /etc/init.d/vpnroute /etc/init.d/vpnroute-trace /usr/bin/vpnroute \
 	/usr/share/vpnroute/gen.uc /usr/share/vpnroute/status.uc /usr/share/vpnroute/trace.uc \
-	/usr/share/vpnroute/update.uc
+	/usr/share/vpnroute/update.uc /usr/share/vpnroute/discover.uc
 # служба диагностики запускается только по запросу, не при загрузке
 /etc/init.d/vpnroute-trace disable 2>/dev/null || true
 

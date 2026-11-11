@@ -101,6 +101,7 @@ files/                          файлы, которые копируются 
   usr/share/vpnroute/status.uc  состояние в JSON для LuCI
   usr/share/vpnroute/trace.uc   сбор данных для диагностики трафика
   usr/share/vpnroute/update.uc  проверка и установка обновлений с GitHub
+  usr/share/vpnroute/discover.uc поиск доменов, с которых сайт загружает файлы
   usr/share/vpnroute/builtin.uc чтение встроенных списков
   usr/share/vpnroute/lists/     встроенные списки по сервисам
   usr/share/vpnroute/VERSION    номер версии

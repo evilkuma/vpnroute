@@ -192,6 +192,7 @@ return baseclass.extend({
 			]),
 			l.enabled ? '' : E('p', { 'class': 'vr-note' }, _('Список выключен: его записи сейчас не работают.')),
 			this.adder(l),
+			this.discovery && this.discovery.list === l.id ? this.discovery.node : '',
 			this.entryRows(l, false)
 		];
 	},
@@ -324,6 +325,9 @@ return baseclass.extend({
 			reset();
 			if (n > 1)
 				core.toast(_('Добавлено записей: %d').format(n));
+			// у одного сайта ищем, с каких ещё доменов он загружает файлы
+			if (items.length === 1 && items[0].kind === 'domain')
+				self.discover(l, items[0].value);
 			return core.apply();
 		};
 
@@ -350,6 +354,172 @@ return baseclass.extend({
 		addBtn.disabled = true;
 
 		return E('div', { 'class': 'vr-adder' }, [ E('div', { 'class': 'line' }, [ input, comment, addBtn ]), hint ]);
+	},
+
+	// ---------- связанные домены ----------
+
+	// Сайт открывается на роутере через VPN, из страницы и её скриптов
+	// собираются домены, с которых загружаются файлы.
+	discover: function(l, domain) {
+		const self = this;
+		const node = E('div', { 'class': 'vr-discover', 'aria-live': 'polite' });
+		const d = { list: l.id, domain: domain, node: node };
+		this.discovery = d;
+		const shown = core.showDomain(domain);
+		const close = function() {
+			node.remove();
+			if (self.discovery === d)
+				self.discovery = null;
+		};
+		dom.content(node, [
+			E('p', { 'class': 'vr-busy' }, _('Открываю %s через VPN и смотрю, с каких ещё доменов он загружает файлы. Это займёт до полуминуты.').format(shown)),
+			E('div', { 'class': 'row-actions' }, core.button(_('Не ждать'), close, 'quiet'))
+		]);
+		this.right.querySelectorAll('.vr-discover').forEach(function(n) { n.remove(); });
+		const adder = this.right.querySelector('.vr-adder');
+		if (adder)
+			adder.after(node);
+
+		return core.runJson([ 'discover', domain ]).then(function(res) {
+			if (self.discovery === d)
+				self.drawDiscovery(l, d, res, close);
+		}).catch(function(e) {
+			if (self.discovery === d)
+				self.drawDiscovery(l, d, { error: e.message, hosts: [] }, close);
+		});
+	},
+
+	drawDiscovery: function(l, d, res, close) {
+		const self = this;
+		const shown = core.showDomain(d.domain);
+		if (res.error) {
+			dom.content(d.node, [
+				E('p', {}, _('Не получилось открыть %s через VPN: %s').format(shown, res.error)),
+				E('p', { 'class': 'muted small' }, _('Проверьте, что VPN работает и сайт открывается. Другие домены сайта можно найти записью трафика во вкладке «Диагностика».')),
+				E('div', { 'class': 'row-actions' }, core.button(_('Закрыть'), close, 'quiet'))
+			]);
+			return;
+		}
+
+		// Хосты объединяются по сайту (cdn.discordapp.com → discordapp.com).
+		// Общие облака предлагаются точным адресом: весь cloudfront.net в VPN не нужен.
+		const SHARED = [ 'cloudfront.net', 'amazonaws.com', 'akamaized.net', 'akamaihd.net', 'fastly.net', 'azureedge.net',
+			'azurefd.net', 'googleusercontent.com', 'appspot.com', 'b-cdn.net', 'cdn77.org', 'edgekey.net', 'edgesuite.net',
+			'website-files.com', 'vercel.app', 'netlify.app', 'pages.dev', 'workers.dev', 'herokuapp.com', 'r2.dev' ];
+		const COMMON = [ 'google.com', 'googleapis.com', 'gstatic.com', 'googletagmanager.com', 'google-analytics.com',
+			'doubleclick.net', 'googlesyndication.com', 'youtube.com', 'ytimg.com', 'facebook.com', 'facebook.net', 'instagram.com',
+			'x.com', 'twitter.com', 'tiktok.com', 'yandex.ru', 'yandex.net', 'yastatic.net', 'vk.com', 'userapi.com', 'mail.ru',
+			'cloudflare.com', 'cloudflareinsights.com', 'jsdelivr.net', 'unpkg.com', 'recaptcha.net', 'hcaptcha.com',
+			'hotjar.com', 'sentry.io', 'apple.com', 'microsoft.com', 'yadro.ru' ];
+		const suffix = function(h, list) {
+			return list.filter(function(s) { return h === s || h.slice(-s.length - 1) === '.' + s; })[0];
+		};
+		const brand = d.domain.split('.').slice(-2)[0];
+		const related = function(site) {
+			const label = site.split('.')[0];
+			return brand.length >= 4 && (label.indexOf(brand) >= 0 || (label.length >= 4 && brand.indexOf(label) >= 0));
+		};
+
+		const groups = {}, order = [];
+		(res.hosts || []).forEach(function(h) {
+			const shared = suffix(h.host, SHARED);
+			const a = core.analyze(h.host);
+			const site = shared || !a || a.error ? h.host : a.def;
+			let g = groups[site];
+			if (!g) {
+				g = groups[site] = { site: site, hosts: [], strong: 0, weak: 0, redirect: false };
+				order.push(g);
+			}
+			g.hosts.push(h.host);
+			g.strong += h.strong;
+			g.weak += h.weak;
+			g.redirect = g.redirect || !!h.redirect;
+		});
+
+		const fresh = [], covered = [];
+		order.forEach(function(g) {
+			if (g.site === d.domain)
+				return;
+			const c = core.findCover(self.index, 'domain', g.site);
+			if (c && c.enabled) {
+				covered.push(g);
+				return;
+			}
+			g.related = g.redirect || related(g.site);
+			g.common = !g.related && suffix(g.site, COMMON);
+			fresh.push(g);
+		});
+		const loads = fresh.filter(function(g) { return g.strong > 0; });
+		const mentions = fresh.filter(function(g) { return g.strong === 0; });
+
+		const boxes = [];
+		const addBtn = core.button(_('Добавить выбранные'), function() { return addChecked(); }, 'primary');
+		const count = function() {
+			const n = boxes.filter(function(b) { return b.input.checked; }).length;
+			addBtn.textContent = n ? _('Добавить выбранные: %d').format(n) : _('Добавить выбранные');
+			addBtn.disabled = !n;
+		};
+		const item = function(g) {
+			const input = E('input', { 'type': 'checkbox' });
+			input.checked = !!g.related;
+			input.addEventListener('change', count);
+			boxes.push({ input: input, g: g });
+			let note = '';
+			if (g.redirect)
+				note = _('сайт переадресует сюда');
+			else if (g.related)
+				note = _('похоже, тот же сайт');
+			else if (g.common)
+				note = _('общий сервис, обычно работает и напрямую');
+			const hosts = g.hosts.filter(function(h) { return h !== g.site; });
+			return E('li', {}, E('label', {}, [
+				input,
+				E('span', {}, [
+					E('span', { 'class': 't' }, core.showDomain(g.site)), ' ',
+					note ? E('span', { 'class': 'note' + (g.related ? ' route' : '') }, note) : '', ' ',
+					hosts.length ? E('small', {}, hosts.slice(0, 3).join(', ') + (hosts.length > 3 ? _(' и ещё %d').format(hosts.length - 3) : '')) : ''
+				])
+			]));
+		};
+
+		const addChecked = function() {
+			const picked = boxes.filter(function(b) { return b.input.checked; }).map(function(b) {
+				return { value: b.g.site, kind: 'domain', comment: _('для %s').format(shown) };
+			});
+			if (!picked.length)
+				return;
+			const n = self.addEntries(l, picked);
+			close();
+			core.toast(_('Добавлено доменов: %d').format(n));
+			return core.apply();
+		};
+
+		const names = function(list) { return list.map(function(g) { return core.showDomain(g.site); }).join(', '); };
+		const parts = [];
+		if (!fresh.length) {
+			parts.push(E('p', {}, covered.length
+				? _('Другие домены %s уже идут через VPN: %s.').format(shown, names(covered))
+				: _('На странице %s не нашлось файлов с других доменов. Если сайт всё равно открывается не полностью, запишите его трафик во вкладке «Диагностика».').format(shown)));
+			parts.push(E('div', { 'class': 'row-actions' }, core.button(_('Закрыть'), close, 'quiet')));
+			dom.content(d.node, parts);
+			return;
+		}
+
+		parts.push(E('p', {}, [ E('b', {}, _('%s загружает файлы и с других доменов.').format(shown)), ' ',
+			_('Если сайт открывается не полностью, добавьте их тоже. Отмечены те, что похожи на сам сайт.') ]));
+		if (loads.length)
+			parts.push(E('h3', {}, _('Файлы страницы')), E('ul', { 'class': 'vr-picks' }, loads.map(item)));
+		if (mentions.length)
+			parts.push(E('details', {}, [
+				E('summary', {}, _('Упоминаются в скриптах: %d').format(mentions.length)),
+				E('p', { 'class': 'muted small' }, _('Обычно это адреса для данных, статистики и рекламы. Добавляйте, если без них что-то не работает.')),
+				E('ul', { 'class': 'vr-picks' }, mentions.map(item))
+			]));
+		if (covered.length)
+			parts.push(E('p', { 'class': 'muted small' }, _('Уже идут через VPN: %s.').format(names(covered))));
+		parts.push(E('div', { 'class': 'row-actions' }, [ addBtn, core.button(_('Не нужно'), close, 'quiet') ]));
+		count();
+		dom.content(d.node, parts);
 	},
 
 	addEntries: function(l, items) {
@@ -409,8 +579,16 @@ return baseclass.extend({
 					note = e.comment ? E('div', { 'class': 's' }, e.comment) : '';
 				}
 				else {
-					if (e.comment)
+					if (e.kind === 'domain')
+						side.push(core.iconButton('search', _('Найти, с каких ещё доменов загружается %s').format(shown), function() {
+							self.discover(l, e.value);
+							self.right.scrollIntoView({ block: 'start', behavior: 'smooth' });
+						}));
+					if (e.comment) {
 						note = noteInput();
+						// пустое место вместо кнопки заметки: значки в строках стоят ровно
+						side.push(E('span', { 'class': 'vr-slot' }));
+					}
 					else
 						side.push(core.iconButton('edit', _('Добавить заметку'), function(ev) {
 							const n = noteInput();

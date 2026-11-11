@@ -29,6 +29,9 @@ usage() {
   trace devices             устройства локальной сети (JSON)
   trace dump                данные последнего сеанса (JSON)
 
+  discover <домен>          с каких ещё доменов сайт загружает файлы (JSON;
+                            страница открывается через VPN)
+
   list-add <список> <домен|IP> [название]
                             добавить запись в список; вместо имени списка
                             «new» создаёт новый список с указанным названием
@@ -350,6 +353,7 @@ case "$1" in
 	update) shift; cmd_update "$@" ;;
 	version) cat /usr/share/vpnroute/VERSION 2>/dev/null || echo "неизвестна" ;;
 	list-add) shift; cmd_list_add "$@" ;;
+	discover) ucode /usr/share/vpnroute/discover.uc "$2" ;;
 	check) cmd_check "$2" ;;
 	gen) ucode "$GEN" --print ;;
 	logs) logread | grep -E 'vpnroute|xray' | tail -n "${2:-50}" ;;

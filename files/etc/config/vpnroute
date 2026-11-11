@@ -24,6 +24,8 @@ config main 'main'
 	# Технические параметры
 	option tproxy_port '12701'
 	option dns_port '1053'
+	# SOCKS на 127.0.0.1 для поиска связанных доменов сайта через VPN
+	option probe_port '12702'
 	option fwmark '0x40000'
 	option route_table '107'
 

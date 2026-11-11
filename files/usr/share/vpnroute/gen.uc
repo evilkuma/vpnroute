@@ -283,6 +283,8 @@ if (clear_only) {
 
 let tp_port = int(opt('tproxy_port', '12701'));
 let dns_port = int(opt('dns_port', '1053'));
+// SOCKS только для самого роутера: через него «vpnroute discover» открывает сайты через VPN
+let probe_port = int(opt('probe_port', '12702'));
 let fwmark = opt('fwmark', '0x40000');
 let lan_ifaces = aslist(opt('lan_iface', 'br-lan'));
 let dns_upstream = opt('dns_upstream', 'https://1.1.1.1/dns-query');
@@ -440,7 +442,7 @@ else {
 	use_balancer = true;
 }
 
-let final_rule = { type: 'field', inboundTag: [ 'dns-internal', 'tproxy-in' ] };
+let final_rule = { type: 'field', inboundTag: [ 'dns-internal', 'tproxy-in', 'probe-in' ] };
 for (let k, v in target)
 	final_rule[k] = v;
 
@@ -482,6 +484,13 @@ let xray = {
 			settings: { network: 'tcp,udp', followRedirect: true },
 			streamSettings: { sockopt: { tproxy: 'tproxy' } },
 			sniffing: { enabled: true, destOverride: [ 'fakedns' ], metadataOnly: true }
+		},
+		{
+			tag: 'probe-in',
+			listen: '127.0.0.1',
+			port: probe_port,
+			protocol: 'socks',
+			settings: { auth: 'noauth', udp: false }
 		}
 	],
 	outbounds: outbounds,

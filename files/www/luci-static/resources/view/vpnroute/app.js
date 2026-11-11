@@ -33,7 +33,8 @@ return view.extend({
 
 	render: function(data) {
 		if (!document.querySelector('link[data-vpnroute]'))
-			document.head.appendChild(E('link', { 'rel': 'stylesheet', 'href': L.resource('vpnroute/app.css'), 'data-vpnroute': '' }));
+			document.head.appendChild(E('link', { 'rel': 'stylesheet', 'data-vpnroute': '',
+				'href': L.resource('vpnroute/app.css') + '?v=' + ((data[1] && data[1].ui_stamp) || Date.now()) }));
 
 		const self = this;
 		const ctx = this.ctx = {

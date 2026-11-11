@@ -11,6 +11,7 @@
 				"/usr/bin/vpnroute": [ "exec" ],
 				"/usr/bin/vpnroute status-json": [ "exec" ],
 				"/usr/bin/vpnroute check *": [ "exec" ],
+				"/usr/bin/vpnroute discover *": [ "exec" ],
 				"/usr/bin/vpnroute logs *": [ "exec" ],
 				"/usr/bin/vpnroute trace devices": [ "exec" ],
 				"/usr/bin/vpnroute trace dump": [ "exec" ],

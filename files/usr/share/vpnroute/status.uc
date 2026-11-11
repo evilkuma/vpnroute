@@ -4,7 +4,7 @@
 'use strict';
 
 import { cursor } from 'uci';
-import { popen } from 'fs';
+import { popen, stat } from 'fs';
 import { builtin_lists } from './builtin.uc';
 
 function sh(cmd) {
@@ -38,6 +38,8 @@ let res = {
 	running: sh('pidof xray') != '',
 	rules: system('nft list table inet vpnroute >/dev/null 2>&1') == 0,
 	version: split(sh('xray version 2>/dev/null'), '\n')[0] || '',
+	// метка файла стилей: после обновления браузер не возьмёт старую копию из кэша
+	ui_stamp: (stat('/www/luci-static/resources/vpnroute/app.css') || {}).mtime || 0,
 	servers: [],
 	builtin: [],
 	lists: [],

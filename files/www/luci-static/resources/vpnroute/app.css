@@ -350,11 +350,29 @@ a.vr-chip:hover { border-color: var(--muted); }
 .vr-filter .vr-input { max-width: 260px; min-height: 32px; padding: 5px 10px; }
 .vr-entry .main .t { font-weight: 400; }
 .vr-entry > .vr-switch { margin-right: 4px; }
+.vr-slot { flex: none; width: 34px; }
 .vr-entry .kind { font-size: 12px; color: var(--muted); }
 .vr-entry .note { display: block; width: 100%; height: auto; min-height: 0; margin: 2px 0 0; box-shadow: none; border: 0; background: transparent; padding: 0; font-size: 13px; color: var(--muted); }
 .vr-entry .note:focus { outline: none; color: var(--ink); border-bottom: 1px solid var(--line); }
 .vr-entry .note::placeholder { color: var(--muted); opacity: 0; }
 .vr-entry:hover .note::placeholder, .vr-entry .note:focus::placeholder { opacity: .6; }
+
+/* найденные домены сайта */
+.vr-discover { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--route); border-radius: var(--r-m); padding: 12px 14px; margin: -6px 0 18px; display: grid; gap: 10px; font-size: 14px; }
+.vr-discover h3 { font-size: 14px; }
+.vr-discover details summary { cursor: pointer; font-weight: 500; }
+.vr-discover details[open] summary { margin-bottom: 6px; }
+.vr-busy { display: flex; gap: 10px; align-items: center; }
+.vr-busy::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--route); animation: vr-spin .9s linear infinite; }
+@keyframes vr-spin { to { transform: rotate(360deg); } }
+.vr-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.vr-picks label { display: flex; gap: 10px; align-items: flex-start; padding: 5px 4px; border-radius: var(--r-s); cursor: pointer; }
+.vr-picks label:hover { background: var(--board); }
+.vr-picks input { margin: 3px 0 0; accent-color: var(--route); width: 16px; height: 16px; flex: none; }
+.vr-picks .t { font-weight: 500; margin-right: 8px; }
+.vr-picks .note { font-size: 12px; color: var(--muted); }
+.vr-picks .note.route { color: var(--route); }
+.vr-picks small { display: block; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 
 /* ---------- устройства, серверы ---------- */
 .vr-device .main .t input { font-weight: 500; }
