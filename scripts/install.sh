@@ -129,6 +129,20 @@ rm -f /tmp/luci-indexcache* 2>/dev/null || true
 rm -rf /tmp/luci-modulecache 2>/dev/null || true
 /etc/init.d/rpcd restart
 
+# ---------- перенос настроек ----------
+# 1.2.1: список Meta разделён на Facebook, Instagram и Meta Quest.
+# Кто выключал Meta, у того новые списки тоже выключены.
+if [ -n "$(uci -q get vpnroute.main.builtin_meta)" ]; then
+	if [ "$(uci -q get vpnroute.main.builtin_meta)" = 0 ]; then
+		for l in facebook instagram metaquest; do
+			[ -n "$(uci -q get vpnroute.main.builtin_$l)" ] || uci set vpnroute.main.builtin_$l=0
+		done
+	fi
+	uci delete vpnroute.main.builtin_meta
+	uci commit vpnroute
+	log "список Meta разделён на Facebook, Instagram и Meta Quest"
+fi
+
 # ---------- служба ----------
 /etc/init.d/vpnroute enable
 if [ "$(uci -q get vpnroute.main.enabled)" = 1 ]; then

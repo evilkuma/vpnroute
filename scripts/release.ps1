@@ -24,8 +24,11 @@ if (-not (Select-String -Path 'CHANGELOG.md' -Pattern "^## +v?$([regex]::Escape(
     Fail "в CHANGELOG.md нет раздела «## $ver»"
 }
 
-git fetch -q origin main
-if ($LASTEXITCODE -ne 0) { Fail 'не удалось получить origin/main' }
+$ErrorActionPreference = 'Continue'
+git fetch -q origin main 2>&1 | ForEach-Object { "$_" }
+$fetched = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($fetched -ne 0) { Fail 'не удалось получить origin/main' }
 if (git rev-list HEAD..origin/main) { Fail 'на GitHub есть коммиты, которых нет локально: сначала git pull' }
 
 Write-Host "[release] версия $ver, коммит $(git log -1 --format='%h %s')"
@@ -38,8 +41,13 @@ git tag -a $tag -m "vpnroute $ver"
 if ($LASTEXITCODE -ne 0) { Fail 'не удалось создать тег' }
 # атомарно: роутер берёт номер версии из main, а код по тегу, поэтому
 # версия в main не должна появиться без тега
-git push --atomic origin main $tag
-if ($LASTEXITCODE -ne 0) {
+# git пишет ход отправки в stderr: при Stop Windows PowerShell считает это
+# ошибкой и прерывает скрипт, хотя отправка прошла. Успех проверяем по коду
+$ErrorActionPreference = 'Continue'
+git push --atomic origin main $tag 2>&1 | ForEach-Object { "$_" }
+$pushed = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($pushed -ne 0) {
     git tag -d $tag | Out-Null
     Fail 'не удалось отправить на GitHub, тег удалён локально'
 }

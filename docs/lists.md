@@ -41,7 +41,7 @@
 
 Списки бывают двух видов.
 
-**Встроенные** входят в vpnroute и обновляются вместе с ним: YouTube, Claude, Discord, Meta (Facebook, Instagram, Quest), TikTok, Telegram, Chess.com и AliDNS для NekoBox. В LuCI их можно только выключить (**Настройки → Встроенные списки**), изменить нельзя. Списки, появившиеся в новой версии, включаются сами.
+**Встроенные** входят в vpnroute и обновляются вместе с ним: YouTube, Claude, Discord, Facebook и Messenger, Instagram и Threads, Meta Quest, X (Twitter), TikTok, Telegram, Chess.com и AliDNS для NekoBox. В LuCI их можно только выключить (вкладка **«Сайты и адреса»**, раздел «Встроенные»), изменить нельзя. Списки, появившиеся в новой версии, включаются сами.
 
 AliDNS (`223.5.5.5`) — DNS-сервер, который NekoBox по умолчанию использует как «прямой DNS», а провайдер его блокирует. Без этой записи NekoBox на телефоне в домашнем Wi-Fi выдаёт `dns_probe_finished_no_internet`.
 
